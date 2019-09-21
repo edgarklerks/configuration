@@ -1,0 +1,9 @@
+probe kernel.function("pty_set_termios"){
+// printf("%s: vars: %s\n locals: %s\nparms: %s\n", probefunc(), $$vars, $$locals, $$parms)
+printf("%d\n", $tty->magic)
+}
+
+
+
+
+

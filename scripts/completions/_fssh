@@ -1,0 +1,33 @@
+#compdef fssh 
+
+function _load_hosts {
+IFS=$'\n'; _hosts=($(cat $HOME/.ssh/config | grep Host | grep -v HostName  | awk '{print $2}'))
+        for i in $_hosts; do 
+                compadd "$@" $i
+        done 
+}
+
+function _parse_arguments {
+        _arguments -s \
+                '-l[Username]' \
+                '-p[Port]' 
+}
+
+function _fssh {
+        local curcontext="$curcontext" state 
+        _arguments -C \
+                ':host:->host' \
+                '*::arguments:->arguments'
+
+        case $state in 
+                host)
+                        _call_function ret _load_hosts
+                        _call_function ret _parse_arguments
+                ;;
+                arguments)
+                        _call_function ret _parse_arguments
+                        ;;
+                *)
+                ;;
+        esac
+}

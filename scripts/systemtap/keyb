@@ -1,0 +1,12 @@
+probe kernel.function("devpts_*"){
+printf("%s: %s\n", probefunc(), $$parms)
+}
+
+probe kernel.function("pty_chars_in_buffer"){
+printf("%s: %s\n", probefunc(), $$parms)
+}
+
+
+
+
+

@@ -1,0 +1,4 @@
+#!/bin/zsh 
+
+source $HOME/sources/sanoma/bida_ssh/bssh/bin/activate 
+$HOME/sources/sanoma/bida_ssh/bssh/bin/bida-ssh $@

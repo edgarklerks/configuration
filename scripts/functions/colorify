@@ -1,0 +1,27 @@
+function colorify {
+        zmodload zsh/pcre  
+        autoload -U colors 
+        colors 
+
+        while read line; do 
+                # color lines 
+                pcre_compile -i "error"
+                if pcre_match $line; then 
+                        line="${fg[red]}$line ${reset_color}"
+                        
+                else  
+                        pcre_compile -i "warning"
+                        if pcre_match $line; then 
+                                line="${fg[yellow]}$line ${reset_color}"
+                        else 
+                                pcre_compile -i "info"
+                                if pcre_match $line; then 
+                                        line="${fg[green]}$line ${reset_color}"
+                                fi 
+                        fi 
+                fi 
+
+                print $line 
+                
+        done 
+}

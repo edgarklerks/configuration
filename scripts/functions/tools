@@ -1,0 +1,19 @@
+#!/usr/bin/zsh
+
+
+function tools(){
+ true
+}
+
+function tools_help(){
+    usage=$(cat <<EOF
+    Usage:
+    silently <command> [args] - redirect all output
+EOF
+    )
+    echo "$usage"
+}
+
+function silently(){
+	 $@ 2>&1 > /dev/null
+}

@@ -1,0 +1,21 @@
+typeset -i SPINNER_STATE
+typeset -a SPINNER_ANIM
+SPINNER_ANIM=(
+    '|'
+    '/'
+    '-'
+    '\'
+)
+
+psvar[6]='\'
+
+function spinner {
+        local -i CURRENT_POINTER
+        (( CURRENT_POINTER = SPINNER_STATE + 1 ))
+        psvar[6]=$SPINNER_ANIM[$CURRENT_POINTER] 
+        ((SPINNER_STATE = SPINNER_STATE + 1 ))
+        (( SPINNER_STATE =  SPINNER_STATE % 4 ))
+
+}
+
+

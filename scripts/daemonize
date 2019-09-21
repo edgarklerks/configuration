@@ -1,0 +1,5 @@
+#!/usr/bin/zsh 
+
+
+perl ~/scripts/daemonize.pl $@
+

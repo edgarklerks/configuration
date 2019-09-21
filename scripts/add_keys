@@ -1,0 +1,79 @@
+#!/usr/bin/expect 
+package require log
+
+# Stolen from https://wiki.tcl.tk/3348
+
+proc passwd_get {pwprompt}  {
+
+        set oldmode [stty -echo raw]  ;# set to raw and no echo
+        send_user "\n$pwprompt"
+        set timeout -1                ;# wait as long as it takes for input - infinite timeout
+        set p ""
+
+       # read user input one char at a time
+        expect_user {
+                -re "\177"      {
+                      # handle backspace/delete translation
+                        set lastchar [string index $p end]
+                        set p [string range $p 0 [expr [string length $p] - 2]]
+                        send_user "\010 \010"
+                        exp_continue
+                        }
+                "\r" {}
+                      # password entry complete - drop out of expect_user
+                "\003" { exit }
+                      # cntl-C entered - abort altogether
+                -re "." {
+                      # character entry - add to pw variable and echo a "*"
+                        append p $expect_out(buffer)
+                        send_user "*"
+                        exp_continue
+                        }
+                    }
+  
+        send_user "\n"                       ;# send the user the carriage return eaten above by expect_user
+        eval stty $oldmode                   ;# restore echo and cooked mode saved above
+        return [string trimright $p "\r"]    ;# strip carriage return and pass back pw
+}
+
+# Check existence of keys 
+
+set error 0  
+
+foreach key $argv {
+  if { ![file exists $key] } {
+    ::log::logError "$key doesn't exist"
+    set error 1 
+  }
+}
+
+if $error  {
+  ::log::logError "Some keys do not exist"
+  exit 1
+}
+
+set pass [passwd_get "Keys password:"]
+
+foreach key $argv {
+  spawn ssh-add $key
+  expect "Enter passphrase" {
+    send "$pass\r"
+  }
+  expect {
+    Bad {
+      ::log::logError "Wrong password" 
+      exit 1 
+    }
+    Iden {
+      ::log::logMsg "Added keys"
+    }
+    eof {
+      puts "No passphrase given"
+      exit 1
+    }
+
+  }
+}
+exit 0
+
+

@@ -1,0 +1,110 @@
+#!/usr/bin/zsh
+# Module, which let the user register command handlers, so that normally unexecutable file formats become executable.
+# Especially compile-as-you go like systems can be easily integrated with it.
+#
+# There are a couple of default handlers defined:
+# gz handler - gunzips a file
+# tar handler - untar a file
+# pdf handler - view a pdf
+# hs handler - compile, cache and run a haskell program
+# Example
+# register_handler "jpg" "evince_handler"
+# Recognition through the unix file utility would be a nice addition.
+
+typeset -gA REGISTERED_HANDLERS
+GHC_DIR_CACHE=~/.ghc_cache
+
+function envince_handler(){
+    evince "$@"
+}
+
+function feh_handler(){
+    feh "$@"
+}
+
+function tar_handler(){
+    tar -xvvf "$1"
+}
+
+function gz_handler(){
+    gunzip "$@"
+}
+
+function tar_gz_handler(){
+    tar -xvvzf "$1"
+}
+
+function runhaskell_handler(){
+    cmd="$1"
+
+    shift;
+    cname=$(basename "$cmd")
+    suffix=${cname##*.}
+    cname=$(basename $cname ".$suffix")
+    output="$GHC_DIR_CACHE/$cname"
+
+    if [ ! -f "$1" ] && [ -x "$output" ]; then
+	"$output" "$@"
+	return
+    fi
+
+    sum=$(sha512sum "$cmd")
+    if [ -x "$output" ]; then
+	if [ "$(cat "${output}.sum")" != "$sum" ]; then
+	    result=$(ghc --make -threaded -O3 "$cmd" -o "$output")
+	    if [ $? = 0 ]; then
+		echo "$sum" > "${output}.sum"
+	    else
+		print -n2 $result
+		exit 1
+	    fi
+	fi
+    else
+	result=$(ghc --make -threaded -O3 "$cmd" -o "$output")
+	if [ $? = 0 ]; then
+		echo "$sum" > "${output}.sum"
+	else
+	    print -n2 $result
+	    exit 1
+	fi
+
+    fi
+    "$output" "$@"
+}
+
+function unregister_handler(){
+    unset "$REGISTERED_HANDLERS[$1]"
+}
+
+function register_handler(){
+    suffix="$1"
+    handler="$2"
+    REGISTERED_HANDLERS[$1]="$2"
+    alias -s $1="$2"
+}
+
+function command_handling(){
+    register_handler "pdf" "evince_handler"
+    register_handler "jpg" "feh_handler"
+    register_handler "png" "feh_handler"
+    register_handler "gif" "feh_handler"
+    register_handler "dvi" "evince_handler"
+    register_handler "hs" "runhaskell_handler"
+    register_handler "tar" "tar_handler"
+    register_handler "gz" "gz_handler"
+    register_handler "tar.gz" "tar_gz_handler"
+    mkdir -p "$GHC_DIR_CACHE"
+}
+
+function command_not_found_handle(){
+    cmd="$1"
+    shift
+    ext=${cmd##*.}
+    if (( ${+REGISTERED_HANDLERS[(i)$ext]} )); then
+	handler="${REGISTERED_HANDLERS[(k)$ext]}"
+	$handler $cmd "$@"
+    else
+	/etc/zsh_command_not_found "$cmd" "$@"
+    fi
+
+}

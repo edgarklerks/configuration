@@ -1,0 +1,81 @@
+#!/usr/bin/zsh 
+# cron script for collecting statistics 
+autoload -U functional 
+functional 
+autoload -U keydb
+keydb 
+
+function disk {
+
+
+        key=$1
+        arg=$2
+        df | drop 1 | grep $2 | awk '{print $1; print $4}' | while read name; do
+                read val 
+                insert "disk-$key" $val "%"
+        done 
+
+}
+
+function get_cpu_usage {
+        top -bn 6 -d 0.1 | grep '^%Cpu' | tail -n 1 | awk '{print $2; print $4; print $6}'
+}
+
+function cpu {
+        key=$1
+        get_cpu_usage | while read user; do 
+                read sys 
+                read nice 
+                insert "${key}-user" $user "%" 
+                insert "${key}-sys" $sys "%"
+                insert "${key}-nice" $nice "%"
+        done 
+}
+
+function get_memory_usage {
+        cat /proc/meminfo | while read line; do 
+        ps=(${(s: :)${line/:/}})
+                echo $ps[1]
+                echo $ps[2]
+                echo $ps[3]
+        done
+}
+
+function total_mem {
+        key=$1 
+        get_memory_usage | while read name; do 
+                read val 
+                read unit 
+                insert "${key}-${name}" "$val" $unit 
+
+        done 
+
+}
+
+function errmsg {
+
+
+ }
+
+function switch {
+        key=$1 
+        cmd=$2
+        arg=$3 
+
+        case $cmd in 
+                diskspace)
+                        disk $key $arg 
+                        ;;
+                cpu)
+                        cpu $key 
+                        ;;
+                mem)
+                        total_mem $key
+                        ;;
+                *)
+                        errmsg 
+                        ;;
+        esac
+}
+
+switch $@

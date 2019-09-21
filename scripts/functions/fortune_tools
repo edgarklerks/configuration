@@ -1,0 +1,29 @@
+#!/bin/zsh
+MY_FORTUNE_DIR="/usr/share/games/fortunes"
+function ok_message(){
+    msg="$1"
+    printf "${fg_bold_color[green]}%s${reset_color}\n" "$msg"
+}
+
+function error_message(){
+    msg="$1"
+    printf "${fg_bold_color[red]}%s${reset_color}\n" "$msg"
+    exit 1
+}
+
+function compile_fortune_cookie(){
+    fn="$1"
+    ok_message "Copying fortune cookie to fortune directory: $fn to $MY_FORTUNE_DIR"
+    sudo cp "$fn" "$MY_FORTUNE_DIR" || error_message "Couldn't copy fortune cookie"
+    fl=$(basename "$fn")
+    ok_message "Compiling fortune dat file: $MY_FORTUNE_DIR/$fl.dat"
+    sudo strfile -c % "$MY_FORTUNE_DIR/$fl" "$MY_FORTUNE_DIR/$fl.dat" || error_message "Couldn't create cookie dat file"
+    ok_message "Testing fortune cookie"
+    fortune "$fl" || error_message "Your cookie didn't work correctly"
+}
+
+function fortune_tools(){
+    ok_message "Loading fortune cookie tools"
+    autoload -Uz colors
+    colors
+}

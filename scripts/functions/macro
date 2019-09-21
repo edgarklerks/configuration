@@ -1,0 +1,87 @@
+#!/usr/bin/zsh 
+
+
+export MACRO_DIR="$HOME/.zshmacros"
+typeset MACRO_RECORD='null'
+typeset -a MACRO_REGISTER
+
+function start_macro {
+        name=$1 
+        if [[ -z $name ]]; then 
+                print "Need a name"
+                return 
+        fi 
+        MACRO_RECORD=$name 
+        unset MACRO_REGISTER
+        typeset -a MACRO_REGISTER
+}
+
+function stop_macro {
+        print $MACRO_DIR 
+        macro_file="$MACRO_DIR/$MACRO_RECORD"
+        MACRO_REGISTER=('#!/usr/bin/zsh' $MACRO_REGISTER)
+        print "recorded:"
+        print ${(pj:\n:)MACRO_REGISTER}
+        print ${(pj:\n:)MACRO_REGISTER} > $macro_file  
+        MACRO_RECORD='null'
+        unset MACRO_REGISTER 
+}
+
+function get_comment {
+        mf=$1 
+        typeset -a comments  
+        grep -E '^#comment.*' "$MACRO_DIR/$mf" | while read n; do 
+                comments=(${n/\#comment/} $comments)
+        done 
+
+#        ret=$comments[1]
+        ret=${(pj:;:)comments}
+}
+
+
+# Should be hooked on preexec 
+function macro {
+        # If we have a stop macro call don't record
+        cmd=$2
+        if [[ $cmd == 'stop_macro' ]]; then 
+                return 
+        fi 
+        if [[ $MACRO_RECORD != 'null' ]]; then 
+                if [[ ${cmd} == "comment"* ]]; then 
+                        
+                elif [[ ${cmd} == "macro_reset" ]]; then 
+                        unset MACRO_REGISTER
+                        typeset -a MACRO_REGISTER
+                elif [[ ${cmd} == "macro_pop" ]]; then 
+                        
+                else 
+                        MACRO_REGISTER=($MACRO_REGISTER $cmd)
+                fi 
+         fi 
+}
+function comment {
+        MACRO_REGISTER=($MACRO_REGISTER "\#comment${cmd#comment}")
+
+}
+
+function macro_reset {
+        print "resetted macro"
+}
+
+function macro_pop {
+        print "popped one line"
+}
+
+function mro {
+        macro=$1 
+        mr="$MACRO_DIR/$macro"
+        if [[ -r $mr ]]; then 
+                print "replaying macro: $1"
+                cat $mr | while read i; do 
+                        eval $i
+                done 
+        else 
+                print "macro: $1 doesn't exist"
+
+        fi 
+}

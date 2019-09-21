@@ -1,0 +1,27 @@
+# File type aliasses
+
+# Functions which are aliasses for commands
+
+function pcd {
+   pushd $1
+}
+
+function back {
+    popd
+}
+
+# Common commands
+
+alias -g wl="wc -l"
+# alias -g fzf=fzf-carroarmato0.fzf
+# alias -g "git push all"="git push --all; git push --tags"
+# alias -g lsc="ls -lctr"
+# alias -g psa="ps aux"
+
+
+# less filtering
+
+export LESS='-R'
+export LESSOPEN='|~/.lessfilter %s'
+
+# alias aws-vault="aws-vault --backend=file"

@@ -1,0 +1,143 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c}{\PYZsh{}!/bin/zsh}
+
+\PY{n+nb}{typeset} \PYZhy{}A viewdb
+\PY{n+nb}{typeset} \PYZhy{}A guesshook
+\PY{n+nv}{MAXSIZE}\PY{o}{=}100000
+\PY{k}{if} \PY{o}{[}\PY{o}{[} \PYZhy{}z \PY{n+nv}{\PYZdl{}GUESSER\PYZus{}LEVEL}  \PY{o}{]}\PY{o}{]}\PY{p}{;} \PY{k}{then}
+    \PY{n+nb}{export }\PY{n+nv}{GUESSER\PYZus{}LEVEL}\PY{o}{=}0
+\PY{k}{fi}
+
+guesshook\PY{o}{[}application/gzip\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}gziphook\PYZsq{}}
+guesshook\PY{o}{[}application/x\PYZhy{}xz\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}xzhook\PYZsq{}}
+guesshook\PY{o}{[}application/x\PYZhy{}bzip2\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}bzip2hook\PYZsq{}}
+guesshook\PY{o}{[}text/plain\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}texthook\PYZsq{}}
+guesshook\PY{o}{[}inode/x\PYZhy{}empty\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}emptyhook\PYZsq{}}
+guesshook\PY{o}{[}text/x\PYZhy{}shellscript\PY{o}{]}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}shellhook\PYZsq{}}
+
+zmodload zsh/pcre
+autoload \PYZhy{}U colors
+colors
+
+\PY{k}{function} ok\PYZus{}message\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+ \PY{n+nv}{msg}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+ \PY{n+nb}{echo} \PY{l+s+s2}{\PYZdq{}}\PY{l+s+si}{\PYZdl{}\PYZob{}}\PY{n+nv}{fg\PYZus{}bold}\PY{p}{[cyan]}\PY{l+s+si}{\PYZcb{}}\PY{n+nv}{\PYZdl{}msg}\PY{l+s+si}{\PYZdl{}\PYZob{}}\PY{n+nv}{reset\PYZus{}color}\PY{l+s+si}{\PYZcb{}}\PY{l+s+s2}{\PYZbs{}n}\PY{l+s+s2}{\PYZdq{}}
+
+\PY{o}{\PYZcb{}}
+\PY{k}{function} error\PYZus{}detected\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{msg}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nb}{echo} \PY{l+s+s2}{\PYZdq{}}\PY{l+s+si}{\PYZdl{}\PYZob{}}\PY{n+nv}{fg\PYZus{}bold}\PY{p}{[red]}\PY{l+s+si}{\PYZcb{}}\PY{l+s+s2}{Error viewing }\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: }\PY{n+nv}{\PYZdl{}msg}\PY{l+s+si}{\PYZdl{}\PYZob{}}\PY{n+nv}{reset\PYZus{}color}\PY{l+s+si}{\PYZcb{}}\PY{l+s+s2}{\PYZbs{}n}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nb}{exit }1
+\PY{o}{\PYZcb{}}
+\PY{k}{function} emptyhook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}file is empty.\PYZdq{}}
+\PY{o}{\PYZcb{}}
+\PY{k}{function} texthook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{mime}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: text file detected.\PYZbs{}nopening..}\PY{l+s+s2}{\PYZdq{}}
+    less \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+\PY{o}{\PYZcb{}}
+\PY{k}{function} bzip2hook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{mime}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: bzip2 file detected.\PYZbs{}nopening..}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{count}\PY{o}{=}\PY{k}{\PYZdl{}(}bzcat \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} head \PYZhy{}n\PY{n+nv}{\PYZdl{}MAXSIZE} \PY{p}{|} wc \PYZhy{}c\PY{k}{)}
+    \PY{k}{if} \PY{o}{(}\PY{o}{(} count \PYZgt{} MAXSIZE \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+		error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}File too big, won\PYZsq{}t open it\PYZdq{}}\PY{p}{;}
+    \PY{k}{fi}
+
+    \PY{n+nv}{tf}\PY{o}{=}\PY{k}{\PYZdl{}(}mktemp\PY{k}{)}
+    bzcat \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PYZgt{} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+    view \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+\PY{o}{\PYZcb{}}
+\PY{k}{function} shellhook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: shell script detected\PYZbs{}nopening..}\PY{l+s+s2}{\PYZdq{}}
+    pygmentize \PYZhy{}lsh \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}}\PY{p}{|} less \PYZhy{}r
+\PY{o}{\PYZcb{}}
+
+
+\PY{k}{function} xzhook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{mime}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: xz file detected.\PYZbs{}nopening..}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{count}\PY{o}{=}\PY{k}{\PYZdl{}(}xz \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} wc \PYZhy{}l\PY{k}{)}
+    \PY{k}{if} \PY{o}{(}\PY{o}{(} count \PYZgt{} \PY{l+m}{2} \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+	error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}I cannot open this file, there are multiple files in it.\PYZdq{}}
+    \PY{k}{fi}
+    xz \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} tail \PYZhy{}n1 \PY{p}{|} awk \PY{l+s+s1}{\PYZsq{}\PYZob{}print \PYZdl{}6\PYZcb{}\PYZsq{}} \PY{p}{|} \PY{k}{while} \PY{n+nb}{read }unit\PY{p}{;} \PY{k}{do}
+	  \PY{k}{if} \PY{o}{[}\PY{o}{[} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}unit}\PY{l+s+s2}{\PYZdq{}} !\PY{o}{=} \PY{l+s+s2}{\PYZdq{}B\PYZdq{}} \PY{o}{]}\PY{o}{]}\PY{p}{;} \PY{k}{then}
+		error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}File too big, won\PYZsq{}t open it\PYZdq{}}\PY{p}{;}
+	   \PY{k}{fi}
+    \PY{k}{done}
+    xz \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} tail \PYZhy{}n1 \PY{p}{|} awk \PY{l+s+s1}{\PYZsq{}\PYZob{}print \PYZdl{}5\PYZcb{}\PYZsq{}} \PY{p}{|} \PY{k}{while} \PY{n+nb}{read }size\PY{p}{;} \PY{k}{do}
+	xz \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} tail \PYZhy{}n1 \PY{p}{|} awk \PY{l+s+s1}{\PYZsq{}\PYZob{}print \PYZdl{}6\PYZcb{}\PYZsq{}} \PY{p}{|} \PY{k}{while} \PY{n+nb}{read }unit\PY{p}{;} \PY{k}{do}
+	    \PY{k}{case} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}unit}\PY{l+s+s2}{\PYZdq{}} in
+		B\PY{o}{)}
+		\PY{p}{;}\PY{p}{;}
+		MiB\PY{o}{)}
+		    \PY{o}{(}\PY{o}{(} \PY{n+nv}{size} \PY{o}{=} size * \PY{l+m}{1000} \PY{o}{)}\PY{o}{)}
+		    \PY{p}{;}\PY{p}{;}
+		*\PY{o}{)}
+		    error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}File too big, won\PYZsq{}t open it\PYZdq{}}\PY{p}{;}
+		    \PY{p}{;}\PY{p}{;}
+		\PY{k}{esac}
+
+
+	    \PY{k}{if} \PY{o}{(}\PY{o}{(} size \PYZgt{} MAXSIZE \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+		error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}File too big, won\PYZsq{}t open it\PYZdq{}}\PY{p}{;}
+	    \PY{k}{fi}
+	    \PY{k}{done}
+    \PY{k}{done}
+    \PY{n+nv}{tf}\PY{o}{=}\PY{k}{\PYZdl{}(}mktemp\PY{k}{)}
+    xzcat \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PYZgt{} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+    view \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+\PY{o}{\PYZcb{}}
+
+\PY{k}{function} gziphook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{mime}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{: gzip file detected.\PYZbs{}nopening..}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{count}\PY{o}{=}\PY{k}{\PYZdl{}(}gzip \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} wc \PYZhy{}l\PY{k}{)}
+    \PY{k}{if} \PY{o}{(}\PY{o}{(} count \PYZgt{} \PY{l+m}{2} \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+	error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}I cannot open this file, there are multiple files in it.\PYZdq{}}
+    \PY{k}{fi}
+    gzip \PYZhy{}\PYZhy{}list \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} tail \PYZhy{}n1 \PY{p}{|} awk \PY{l+s+s1}{\PYZsq{}\PYZob{}print \PYZdl{}2\PYZcb{}\PYZsq{}} \PY{p}{|} \PY{k}{while} \PY{n+nb}{read }size\PY{p}{;} \PY{k}{do}
+
+	\PY{k}{if} \PY{o}{(}\PY{o}{(} size \PYZgt{} MAXSIZE \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+	    error\PYZus{}detected\PY{o}{(}\PY{l+s+s2}{\PYZdq{}File too big, won\PYZsq{}t open it\PYZdq{}}\PY{o}{)}\PY{p}{;}
+	\PY{k}{fi}
+
+    \PY{k}{done}
+    \PY{n+nv}{tf}\PY{o}{=}\PY{k}{\PYZdl{}(}mktemp\PY{k}{)}
+    zcat \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PYZgt{} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+    view \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}tf}\PY{l+s+s2}{\PYZdq{}}
+\PY{o}{\PYZcb{}}
+
+\PY{k}{function} defaulthook\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{mime}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}2}\PY{l+s+s2}{\PYZdq{}}
+    error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{cannot determine suitable viewer.\PYZbs{}nMime type }\PY{n+nv}{\PYZdl{}mime}\PY{l+s+s2}{ unknown.}\PY{l+s+s2}{\PYZdq{}}\PY{p}{;}
+\PY{o}{\PYZcb{}}
+
+\PY{k}{function} guess\PYZus{}type\PY{o}{(}\PY{o}{)}\PY{o}{\PYZob{}}
+    \PY{n+nv}{fn}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+    \PY{n+nv}{fs}\PY{o}{=}\PY{k}{\PYZdl{}(}du \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} awk \PY{l+s+s1}{\PYZsq{}\PYZob{}print \PYZdl{}1\PYZcb{}\PYZsq{}}\PY{k}{)}
+    \PY{k}{if} \PY{o}{(}\PY{o}{(} \PY{n+nv}{fs} \PY{o}{=}\PY{o}{=} \PY{l+m}{0} \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+	error\PYZus{}detected \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}file is empty\PYZdq{}}
+    \PY{k}{fi}
+    \PY{o}{(}\PY{o}{(} \PY{n+nv}{GUESSER\PYZus{}LEVEL} \PY{o}{=} GUESSER\PYZus{}LEVEL + \PY{l+m}{1} \PY{o}{)}\PY{o}{)}
+    \PY{k}{if} \PY{o}{(}\PY{o}{(} GUESSER\PYZus{}LEVEL \PYZgt{} \PY{l+m}{0} \PY{o}{)}\PY{o}{)}\PY{p}{;} \PY{k}{then}
+	ok\PYZus{}message \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Content is wrapped in }\PY{n+nv}{\PYZdl{}GUESSER\PYZus{}LEVEL}\PY{l+s+s2}{ layers}\PY{l+s+s2}{\PYZdq{}}
+    \PY{k}{fi}
+    file \PYZhy{}\PYZhy{}mime\PYZhy{}type \PYZhy{}k \PYZhy{}b \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{p}{|} \PY{k}{while} \PY{n+nb}{read }mime\PY{p}{;} \PY{k}{do}
+		\PY{n+nv}{guesser}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+si}{\PYZdl{}\PYZob{}}\PY{n+nv}{guesshook}\PY{p}{[}\PY{n+nv}{\PYZdl{}mime}\PY{p}{]\PYZhy{}defaulthook}\PY{l+s+si}{\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}
+		\PY{n+nv}{\PYZdl{}guesser} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}fn}\PY{l+s+s2}{\PYZdq{}} \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}mime}\PY{l+s+s2}{\PYZdq{}}
+    \PY{k}{done}
+    \PY{o}{(}\PY{o}{(} \PY{n+nv}{GUESSER\PYZus{}LEVEL} \PY{o}{=} GUESSER\PYZus{}LEVEL \PYZhy{} \PY{l+m}{1} \PY{o}{)}\PY{o}{)}
+\PY{o}{\PYZcb{}}
+
+guess\PYZus{}type \PY{l+s+s2}{\PYZdq{}}\PY{n+nv}{\PYZdl{}1}\PY{l+s+s2}{\PYZdq{}}
+\end{Verbatim}

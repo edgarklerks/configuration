@@ -1,0 +1,17 @@
+zmodload "zsh/net/socket"
+
+function close_socket {
+        fd=$1
+        exec {fd}>&-
+}
+function debug_msg {
+        number=$1
+        socat - UDP-SENDTO:127.0.0.1:$number 
+}
+
+function agent {
+        number=$1 
+        run=$2 
+        socat UDP-RECVFROM:$number,fork exec:$run,fdin=3,fdout=4 &
+}
+

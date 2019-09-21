@@ -1,0 +1,24 @@
+#!/usr/bin/zsh
+
+function privileges(){
+    true
+}
+
+function elevate(){
+    user="${1-root}"
+    wanted="$(get_uid $user)"
+    current="$(get_uid)"
+    if [[ "$wanted" != "$current" ]]; then
+	proc=$(ps -p "$$" -o args=)
+	sudo -u $user sh -c "$proc"
+	exit 0
+    fi
+}
+
+function get_uid(){
+    if [[ -z "$1" ]]; then
+	id -u
+    else
+	id -u "$1"
+    fi
+}

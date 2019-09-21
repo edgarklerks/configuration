@@ -1,0 +1,15 @@
+#!/usr/bin/zsh
+
+
+function hooks {
+    local fn="$1"
+    shift
+    callable fn && fn "$@"
+}
+
+
+function callable {
+    local fn="$1"
+    type $fn &> /dev/null
+    return $?
+}

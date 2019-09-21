@@ -1,0 +1,405 @@
+#!/usr/bin/zsh
+
+function functional {
+    autoload -U zargs
+    unset WORLD_STATE_TREE
+    unset WORLD_STATE_PARENT_REGISTER
+    typeset -gi   WORLD_STATE_NEXT_ID=1
+    typeset -gi   WORLD_ROOT_POINTER=1
+    typeset -gi   WORLD_CURRENT_POINTER=1
+    typeset  -ga  WORLD_STATE_TREE
+    typeset  -ga  WORLD_STATE_PARENT_REGISTER
+    init_state_tree
+}
+
+
+
+
+# High level API of the state tree
+
+function init_state_tree {
+    sn=$(next_state_name)
+    next_state_id
+    typeset -Ag "$sn"
+    insert_ar "WORLD_STATE_TREE" ${WORLD_ROOT_POINTER} $sn
+    insert_ar "WORLD_STATE_PARENT_REGISTER" ${WORLD_ROOT_POINTER} ${WORLD_ROOT_POINTER}
+}
+
+# Create a substate of the current state
+function substate {
+    local -i oldid=$WORLD_STATE_NEXT_ID
+    sn=$(next_state_name)
+    next_state_id
+    typeset -Ag "$sn"
+    insert_ar "WORLD_STATE_TREE" $oldid ${sn}
+    insert_ar "WORLD_STATE_PARENT_REGISTER" $oldid ${WORLD_CURRENT_POINTER}
+    WORLD_CURRENT_POINTER=${oldid}
+    echo ${oldid}
+}
+
+# Create a parallel state of the current state
+function parstate {
+    local -i oldid=$WORLD_STATE_NEXT_ID
+    sn=$(next_state_name)
+    next_state_id
+    typeset -Ag "$sn"
+    pid=$(get_parent_id $WORLD_CURRENT_POINTER)
+    WORLD_STATE_TREE[${oldid}]="$sn"
+    WORLD_STATE_PARENT_REGISTER[${oldid}]=$pid
+    WORLD_CURRENT_POINTER=${oldid}
+    echo ${oldid}
+}
+
+# Destroy a state
+
+function destructstate {
+    pid=$(get_parent_id $WORLD_CURRENT_POINTER)
+    WORLD_STATE_TREE[${WORLD_CURRENT_POINTER}]=()
+    WORLD_STATE_PARENT_REGISTER[${WORLD_CURRENT_POINTER}]=()
+    WORLD_CURRENT_POINTER=$pid
+}
+
+function get_state {
+    local state="${(q)1}"
+    cr=$(get_state_name_for_value $state)
+    if [ "$cr"x = ""x ]; then
+	print -u2 "No such variable in scope"
+	exit 1
+    fi
+
+    lookup_as $cr $state
+}
+
+
+function with_state {
+    local -i ptr="$1"
+    shift
+    local -i LOCAL_POINTER=$WORLD_CURRENT_POINTER
+    WORLD_CURRENT_POINTER=$ptr
+    $@
+    WORLD_CURRENT_POINTER=$LOCAL_POINTER
+}
+
+
+function set_substate {
+    local state="$1"
+    local value="$2"
+
+    current_scope=$(get_state_name $(get_current_pointer))
+    insert_as $current_scope $state $value
+}
+
+function set_state {
+    local state="$1"
+    local value="$2"
+    cr=$(get_state_name_for_value $state)
+    if [ "$cr" = "" ]; then
+	# Create state in current scope
+	current_scope=$(get_state_name $(get_current_pointer))
+	insert_as $current_scope $state $value
+    else
+	insert_as $cr $state $value
+    fi
+}
+
+
+function get_state_name_for_value {
+    local  name="$1"
+    local -i found
+    local -i ptr
+    local -i prev_ptr
+    prev_ptr=-1
+    ptr=$(get_current_pointer)
+    found=0
+    while [ $found -eq 0 -a $ptr -ne $prev_ptr ]; do
+	pntr=$(get_state_name $ptr)
+	if [ -z $(lookup_as $pntr $name) ]; then
+	    prev_ptr=$ptr
+	    ptr=$(get_parent_id $ptr)
+	    else
+	    found=1
+	fi
+    done
+    if [ $found -eq 1 ]; then
+	echo $pntr
+    else
+	echo ""
+    fi
+}
+
+# Pointer accessors
+
+function get_current_pointer {
+    echo $WORLD_CURRENT_POINTER
+}
+function next_state_id {
+    WORLD_STATE_NEXT_ID+=1
+}
+function get_parent_id {
+    local -i index=$1
+    parent_id=$WORLD_STATE_PARENT_REGISTER[$index]
+    echo $parent_id
+}
+
+# Unique State name generation
+
+function next_state_name {
+    echo "STATE_${WORLD_STATE_NEXT_ID}"
+}
+
+function get_state_name {
+    local -i index="$1"
+    echo $WORLD_STATE_TREE[$index]
+}
+
+# Associative array utilities
+function lookup_as {
+    local name="$1"
+    local index="$2"
+    key=${${(@Pk)name}[(i)$index]}
+    val=${${(@P)name}[$key]}
+    echo $val
+}
+
+function insert_as {
+    local name="$1"
+    local index="${(q)2}"
+    local val="${(q)3}"
+    local -A singleton
+    singleton=($index $val)
+    eval "$name+=(${(kv)singleton})"
+}
+
+# Array utilities
+function lookup_ar {
+    local name="$1"
+    local -i index="$2"
+    val=${(@P)${name}[$index]}
+    echo $val
+}
+
+function insert_ar {
+    local name="$1"
+    local -i index="$2"
+    local value="${(q)3}"
+    eval "${name}[$index]=$value"
+}
+
+function lookup_ar_index {
+    local name="$1"
+    local val="$2"
+    local -i key
+    key=${${(@P)name}[(i)$val]}
+    if [ -z  $(lookup_ar $name $key) ]; then
+	echo 0
+	return
+   fi
+    echo "$key"
+}
+
+
+# State tree debug utilities
+
+function show_parent_tree {
+    local name="$1"
+    if [ -z $name ]; then
+	name="WORLD_STATE_PARENT_REGISTER"
+    fi
+    len=$(eval "echo \$#$name")
+    for (( ref=1; ref <= len; ref++ )); do
+	val=$(lookup_ar $name $ref)
+	if [ ! -z $val ]; then
+	    echo "$ref -> $val"
+	fi
+    done
+}
+
+function show_state_tree {
+   local name="$1"
+   if [ -z $name ]; then
+       name="WORLD_STATE_TREE"
+   fi
+    len=$(eval "echo \$#$name")
+    for (( ref=1; ref <= len; ref++ )); do
+	val=$(lookup_ar $name $ref)
+	if [ ! -z $val ]; then
+	    echo "$ref -> $val"
+	fi
+    done
+}
+
+function dump_state {
+    echo "World state tree:"
+    echo ${(kv)WORLD_STATE_TREE}
+    echo "World parent register:"
+    echo ${(kv)WORLD_STATE_PARENT_REGISTER}
+    echo "Current pointe:r"
+    echo ${WORLD_CURRENT_POINTER}
+    echo "Root pointer:"
+    echo ${WORLD_ROOT_POINTER}
+    echo "State next id:"
+    echo ${WORLD_STATE_NEXT_ID}
+}
+function error {
+        print -u2 "$@"
+}
+
+# A lambda function builder for pipes:
+function lambda {
+        function sub {
+                for i; do
+                        shift
+                        if [[ "$i" == "." ]]; then
+                                echo "$@"
+                                return
+                        else
+                                echo "read $i;"
+                        fi
+                done
+        }
+        eval "$(sub "$@")"
+}
+
+function dup {
+        while read i; do
+                echo "$i"
+                echo "$i"
+        done
+}
+
+
+# append to a list
+
+function identity {
+        echo "$@"
+}
+
+function ss_mark {
+        integer ss
+        exec {sw}>$(mktemp)
+        exec {sr}<$(mktemp)
+	substate
+	set_state "current_write" $sw
+	set_state "current_read" $sr
+
+}
+
+function ss_destroy {
+    ss=$(get_state "current_fd")
+    destructstate
+    exec {ss}>&-
+}
+
+function append {
+       lift1 echo
+       list "$@"
+}
+
+function prepend {
+       lift1 echo
+       list "$@"
+}
+
+function interleave_stream {
+    local s1="$1"
+    local s2="$2"
+    read -u$s1 line1
+    read -u$s2 line2
+    while true; do
+	if [ ret1 -ne 0 -a ret2 -ne 0 ]; then
+	    break
+	fi
+	echo $line1
+	echo $line2
+	ret1=read -u$s1 line1
+	ret2=read -u$s2 line2
+
+   done;
+}
+
+
+# lift an n-ary program in a parallel functor
+
+function parN {
+        n=$1
+        shift
+        parallel -j8 -n"$n" "$@"
+}
+
+# lift an 1-ary program in the list functor
+function lift1 {
+        liftN 1 "$@"
+}
+
+# Lift an n-ary program in the list functor
+function liftN {
+        n=$1
+        shift
+        parallel -n"$n" "$@"
+}
+
+function delay {
+        d=$1
+        echo "$d"
+        nop
+}
+
+# Some list like primitives for pipes
+
+function nop {
+        map lambda x . 'echo $x'
+}
+
+function map {
+        while read a; do
+                echo "$a" | eval "$@"
+        done
+}
+
+function take {
+        n=$1
+        command head -n "${n}"
+}
+
+function drop {
+        n=$1
+        command tail -n +(( "${n}" + 1 ))
+}
+
+function list {
+        for i in "$@"; do
+                echo "$i"
+        done
+}
+
+function zip {
+        for i in "$@"; do
+            read line
+            echo "$line"
+            echo "$i"
+        done
+}
+
+function length {
+        command wc -l
+}
+function foldl {
+        f=$*
+        read acc
+        while read elem; do
+                acc=$(echo -e "$acc\n$elem" | eval "$f")
+        done
+        echo "$acc"
+}
+
+function range {
+        start=$1
+        end=$2
+        step=$3
+        while (( start < end )); do
+                echo "$start"
+                (( start = start + step ))
+        done
+}
+
+functional

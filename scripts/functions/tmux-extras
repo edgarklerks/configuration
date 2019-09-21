@@ -1,0 +1,38 @@
+#!/usr/bin/zsh
+# Tmux zsh extension. It contains a precmd hook, which set the pane title to the current function as well as the current topic
+#
+
+
+
+function tmux-extras(){
+    true
+}
+
+function tmux_msg(){
+    tmux display-message "$@"
+}
+
+function is_tmux(){
+    if [[ "$TERM" == "screen" && -n "$TMUX" ]]; then
+	return 0
+    fi
+    return 1
+}
+
+function tmux-set-local-env(){
+    local var="$1"
+    shift
+    tmux set-environment "$var" "$@"
+}
+
+function tmux-get-local-env(){
+    local var="$1"
+    echo $(tmux show-environment "$var") | sed -E "s/$var=//"
+}
+
+function tmux-preexec(){
+    is_tmux && (
+    topic=$(tmux-get-local-env "TOPIC")
+    tmux rename-window "$topic:$1" > /dev/null 2>&1
+    )
+}

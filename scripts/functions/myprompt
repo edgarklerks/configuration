@@ -1,0 +1,24 @@
+# Dynamic prompt, which shows some
+# strategic information. The number of background
+# jobs, the branch I am in and the time
+autoload -Uz branching
+branching
+autoload -U colors
+colors
+PROMPTS=("%{$fg[blue]%}%n%{$reset_color%}%{$fg_bold[grey]%}"
+        ""
+        "%{$fg[green]%}%T%{$reset_color%}%{$fg_bold[grey]%}"
+        ""
+"%{$fg[green]%}%~%{$reset_color%}
+%% "
+        )
+PROMPT=${(j:|:)PROMPTS}
+
+
+
+RPROMPT="%{$fg_bold[green]%}%7v %{$fg[blue]%}%8v | %(?,%{$fg_bold[green]%}jobs:%j,%{$fg_bold[red]%}errcode:%?)%{$reset_color%} (${TOPIC?master})"
+
+function dynamic_prompt {
+    branching
+
+}

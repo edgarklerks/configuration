@@ -1,0 +1,23 @@
+#!/usr/bin/zsh
+
+autoload messages
+messages
+autoload tools
+tools
+
+function help_tools(){
+    true
+}
+
+function help_tools_help(){
+   true
+}
+
+function print_help(){
+   help_lines=""
+   while read line; do
+       help_lines+="$line\n"
+    done
+
+   warning "${help_lines}"
+}

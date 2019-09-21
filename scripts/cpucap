@@ -1,0 +1,1 @@
+cat /proc/cpuinfo | grep flags | awk '{t = substr($0, index($0,$3)); split(t, b, " "); for( i = 1; i <= length(b); i++){ print b[i] }}' | sort | uniq 

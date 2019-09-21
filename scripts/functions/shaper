@@ -1,0 +1,135 @@
+#!/usr/bin/zsh
+
+
+autoload -Uz checks
+checks
+autoload -Uz messages
+messages
+autoload -Uz graph
+graph
+elevate
+
+function shaper(){
+    typeset -ig QDISC_HANDLE_COUNTER
+    typeset -ig QDISC_CLASS_COUNTER
+    typeset -g QDISC_DEV
+    (( QDISC_HANDLE_COUNTER = 1 ))
+
+}
+
+function debug(){
+    info "In $1:"
+    info "QDISC_HANDLE_COUNTER: $QDISC_HANDLE_COUNTER"
+    info "QDISC_CLASS_COUNTER: $QDISC_CLASS_COUNTER"
+}
+
+function attach_root_qdisc(){
+    # To be able to shape, we need to attach a classfull qdisc, we choose cbq, because it is quite tolerant to misconfiguration
+    # It needs the bandwidth of the underlying link, the avgsize of a packet, you can get them by wireshark
+    # Avg size at my homenetwork is 1062bytes
+    # Bandwidth is 100mbit
+    # At work 1000mbps
+    # it returns the PARENT_HANDLER
+
+    # Reset the handle counter
+
+    typeset -ig QDISC_HANDLE_COUNTER=1
+    typeset -ig QDISC_CLASS_COUNTER=1
+
+    start_graph
+
+    dev="$1"
+    parent_handle="$2"
+    rate="${3-100mbit}"
+    avgsize="${4-1000b}"
+    tc qdisc delete dev "$dev" root
+    debug "attach_root_qdisc $parent_handle"
+    ok "$parent_handle -> Attaching root disc to $dev with handle $QDISC_HANDLE_COUNTER"
+    # echo tc qdisc add dev "$dev" root handle "$QDISC_HANDLE_COUNTER:" cbq avpkt "$avgsize" bandwidth "$rate"
+    tc qdisc add dev "$dev" root handle "$QDISC_HANDLE_COUNTER:" cbq avpkt "$avgsize" bandwidth "$rate"
+    QDISC_DEV="$dev"
+    eval "$parent_handle=\"$QDISC_HANDLE_COUNTER\""
+    (( QDISC_HANDLE_COUNTER ++ ))
+    debug "attach_root_qdisc $parent_handle"
+}
+
+
+function attach_class(){
+    # We have attached the parent qdisc to handle 1
+    # Thus we need a counter to keep track of the various classes, which
+    # will be added
+
+    # The function accepts a type and a name of the handler var
+    # then the arguments to that type
+    # It connects the qdiscs to the parent
+    parent="$1"
+    shift
+    child_handle="$1"
+    shift
+    type="$1"
+    shift
+
+    is_set QDISC_DEV "First attach a root qdisc to a device" || return 1
+    debug "attach_class $child_handle"
+    ok "$child_handle -> Attaching inner disc to $QDISC_DEV with parent $parent and classid $parent:$QDISC_HANDLE_COUNTER:"
+    # echo tc class add dev "$QDISC_DEV" parent "$parent:" classid "$parent:$QDISC_CLASS_COUNTER" "$type" $@
+    tc class add dev "$QDISC_DEV" parent "$parent:" classid "$parent:$QDISC_CLASS_COUNTER" "$type" $@
+    eval "$child_handle=\"$QDISC_CLASS_COUNTER\""
+    # (( QDISC_HANDLE_COUNTER = QDISC_HANDLE_COUNTER + 1 ))
+    (( QDISC_CLASS_COUNTER = QDISC_CLASS_COUNTER + 1 ))
+    debug "attach_class $child_handle"
+
+}
+
+function get_next_child_handle(){
+    var="$1"
+    eval "$var=$QDISC_CLASS_COUNTER"
+}
+
+function attach_qdisc(){
+    # Finally we add leave qdiscs, which can be classful or classless
+
+    parent="$1"
+    shift
+    child_handle="$1"
+    shift
+    type="$1"
+    shift
+
+    is_set QDISC_DEV "No root device added" || return 1
+    debug "attach_qdisc $child_handle"
+    ok "$child_handle -> Attaching inner disc to $QDISC_DEV with parent $parent and handle $QDISC_HANDLE_COUNTER:"
+    # echo tc qdisc add dev "$QDISC_DEV" parent "$parent" handle "$QDISC_HANDLE_COUNTER:" "$type" $@
+    tc qdisc add dev "$QDISC_DEV" parent "$parent" handle "$QDISC_HANDLE_COUNTER:" "$type" $@
+    eval "$child_handle=\"$QDISC_HANDLE_COUNTER\""
+    (( QDISC_HANDLE_COUNTER = QDISC_HANDLE_COUNTER + 1 ))
+    debug "attach_qdisc $child_handle"
+}
+
+
+attach_root_qdisc virbr0 parent_handle 100mbit 1000b
+attach_class $parent_handle cbq_child1 cbq rate 50mbit bandwidth 50mbit allot 1500b rate 50mbit prio 3 avpkt 1000b weight 500 cell 8
+attach_class $parent_handle cbq_child2 cbq rate 50mbit bandwidth 50mbit allot 1500b rate 50mbit prio 3 avpkt 1000b weight 500 cell 8
+
+get_next_child_handle default_htb_21
+attach_qdisc $parent_handle:$cbq_child1 cbq_p1 cbq bandwidth 50mbit avpkt 1000b
+attach_qdisc $parent_handle:$cbq_child2 cbq_p2 cbq bandwidth 50mbit avpkt 1000b
+
+
+attach_class $cbq_p1 cbq_leaf11 cbq bandwidth 25mbit rate 25mbit allot 1500b prio 2 avpkt 1000b weight 500 cell 8
+attach_class $cbq_p1 cbq_leaf12 cbq bandwidth 25mbit rate 25mbit allot 1500b prio 3 avpkt 1000b weight 500 cell 8
+
+
+attach_class $cbq_p2 cbq_leaf21 cbq bandwidth 25mbit rate 25mbit allot 1500b prio 2 avpkt 1000b weight 500 cell 8
+attach_class $cbq_p2 cbq_leaf22 cbq bandwidth 25mbit rate 25mbit allot 1500b prio 2 avpkt 1000b weight 500 cell 8
+
+
+attach_qdisc $cbq_p1:$cbq_leaf11 sfb_leaf11 sfb
+attach_qdisc $cbq_p2:$cbq_leaf21 sfb_leaf21 sfb
+attach_qdisc $cbq_p1:$cbq_leaf12 tbf_leaf12 sfb
+attach_qdisc $cbq_p2:$cbq_leaf22 tbf_leaf22 sfb
+
+attach_qdisc $sfb_leaf11: sfq_inner11 sfq
+attach_qdisc $tbf_leaf12: sfq_inner12 sfq
+attach_qdisc $sfb_leaf21: sfq_inner21 sfq
+attach_qdisc $tbf_leaf22: sfq_inner22 sfq

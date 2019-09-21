@@ -1,0 +1,81 @@
+#!/usr/bin/zsh
+
+
+function zparallel {
+    # Load colors
+    autoload -U messages
+    local -i jobs=8
+    local -a inpool
+    local -a outpool
+    for (( i = 1; i <= jobs; i++ )); do
+	tmpin=$(mktemp --dry-run)
+	tmpout=$(mktemp --dry-run)
+	echo "Opening fifo"
+	mkfifo $tmpin
+	mkfifo $tmpout
+	echo "Launching subworker"
+	subworker "$tmpin" "$tmpout" "$@" &
+	inpool[$i]="$tmpin"
+	outpool[$i]="$tmpout"
+    done
+    i=0
+    typeset -a closepool
+
+    for (( i = 1; i <= jobs; i++ )); do
+	inx=$(( i + 20 ))
+	$inx>"$inpool[$i]"
+	closepool[$i]=$inx
+    done
+    for x; do
+	(( i = 1 + i % jobs ))
+	inx=$(( i + 20 ))
+	echo "$x" >&$inx
+    done
+    for (( i = 1; i <= jobs; i++ )); do
+	inx=$(( i + 20 ))
+	exec $inx>&-
+    done
+
+
+    i=0
+    while true; do
+	(( i = 1 + i % jobs ))
+	while read line; do
+	    echo $line
+	done < "$outpool[$i]"
+
+EOF
+    done
+    echo "Left the building"
+}
+
+function subworker {
+    local tmpin="$1"
+    local tmpout="$2"
+    shift
+    shift
+
+    TRAPEXIT(){
+	echo "OK" >>"$tmpout"
+    }
+    TRAPZERR(){
+	echo "ERROR" >> "$tmpout"
+    }
+    TRAPINT(){
+	echo "ERROR" >> "$tmpout"
+    }
+    nok=0
+    while read -r line; do
+	echo "$line"
+	"$@" $line
+	if [ $? -ne 0 ]; then
+	    nok=1
+	fi
+    done < $tmpin
+    if [ $nok -eq 1 ]; then
+	echo "ERROR" >> "$tmpout"
+    else
+	echo "OK" >> "$tmpout"
+    fi
+
+}

@@ -1,0 +1,26 @@
+#compdef mro 
+autoload -Uz macro 
+macro 
+
+function _mro {
+      local curcontext="$curcontext" state 
+      _arguments -C \
+              ":arguments:->arguments"
+
+      case $state in
+              arguments)
+                      _call_function ret _load_macros 
+                      ;;
+        esac
+}
+
+function _load_macros {
+        IFS=$'\n'; _macros=($(ls ~/.zshmacros/))
+        typeset -a macros 
+        for i in $_macros; do 
+                get_comment $i 
+                macros=("$i:${ret}" $macros)
+        done 
+        _describe -O 'macros' macros
+
+}

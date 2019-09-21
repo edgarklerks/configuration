@@ -1,0 +1,36 @@
+#!/usr/bin/zsh
+
+function checks(){
+    true
+}
+
+function not(){
+    if $@; then
+	return 1
+    else
+	return 0
+    fi
+}
+
+function is_set(){
+    local var="$1"
+    local text="$2"
+    local res=$(eval echo "\$$VAR")
+    if [[ -z "$res" ]]; then
+	echo "$var not set: $text"
+	return 1
+    fi
+    return 0
+}
+
+function is_root(){
+    [[ $EUID == 0 ]]
+}
+
+function elevate(){
+    if not is_root; then
+	proc=$(ps -p "$$" -o args=)
+	sudo sh -c "$proc"
+	exit 0
+    fi
+}

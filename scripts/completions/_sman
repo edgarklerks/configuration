@@ -1,0 +1,56 @@
+#compdef sman 
+
+zmodload zsh/pcre 
+
+function grep_section {
+        line=$1 
+        if [[ $line -pcre-match "\(([0-9a-zA-Z]+)\)" ]]; then 
+                section=${match//:/\\:}
+        else
+                section=""
+        fi 
+}
+
+function grep_name {
+        line=$1 
+        if [[ $line -pcre-match "^([^ ]+)\s+\(" ]]; then 
+                name=${match//:/\\:}
+        else 
+                name=""
+        fi 
+}
+function grep_description {
+        line=$1 
+        if [[ $line -pcre-match "-\s+(.*)$" ]]; then 
+                description=${match//:/\\:}
+        else 
+                name=""
+        fi 
+}
+
+function _sman {
+        local curcontext="$curcontext" state 
+        _arguments -C \
+                ':keyword:->keyword'
+
+        case $state in 
+                keyword)
+                        wlength=${#${words[2]}}
+                        typeset -a arguments 
+
+                        if (( wlength > 1 )); then 
+                                unqouted=${(Q)words[2]}
+                                IFS=$'\n'; lines=($(apropos --long --and --regex "${unqouted}" 2>/dev/null))
+                                for line in $lines; do 
+                                        grep_section $line 
+                                        grep_description $line 
+                                        grep_name $line 
+                                        arguments=("$section.$name:$description" $arguments)
+
+                                done 
+                        fi 
+                        _describe -O 'sman regex search' arguments 
+                        ;;
+        esac
+}
+

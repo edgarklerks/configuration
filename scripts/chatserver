@@ -1,0 +1,54 @@
+
+
+# prints the username and text
+function interact {
+        local line 
+        local fd 
+        local commands
+        fd=$1
+        read -u$fd -r line 
+        commands=(${(s|:|)line})
+        case $commands[1] in 
+                msg)
+                        print "$commands[2]: $commands[3]"
+                        print -u$fd "OK"
+                        ;;
+                con)
+                        print "$commands[2] connected to server" 
+                        print -u$fd "OK"
+                        ;;
+                *)
+                        print "NOT_UNDERSTOOD"
+                        ;;
+        esac
+        
+        
+        close_socket $fd
+}
+
+function connect {
+        local name
+        local announce 
+        export LOCAL_CONNECT=$name
+        export LOCAL_ANNOUNCE=$announce
+        name=$1 
+        announce=$2
+        msg $name "con:$announce"
+}
+
+function send {
+        local $msg 
+        msg=$1
+
+        msg $LOCAL_CONNECT "msg:$LOCAL_ANNOUNCE:$msg"
+
+
+}
+
+# Listens on a file 
+function chatserver {
+        local file 
+        file=$1
+        print "start listening"
+        listen($file,"interact")
+}

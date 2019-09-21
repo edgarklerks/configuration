@@ -1,0 +1,13 @@
+function showdirstack {
+    dirs -v 
+}
+
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+bindkey '^[OA' history-substring-search-up
+bindkey '^[OB' history-substring-search-down
+bindkey '^R' history-incremental-search-backward
+bindkey '^S' history-incremental-search-forward
+bindkey -s '^L' '^qshowdirstack\n'
+
+

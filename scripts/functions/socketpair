@@ -1,0 +1,67 @@
+
+zmodload "zsh/net/socket"
+
+
+function listen {
+    local -i fdl 
+    local name 
+    local func 
+    local -i accept
+    TRAPINT(){
+        close_socket $accept 
+        close_socket $fdl 
+        rm name 
+    }
+
+
+    name=$1
+    func=$2
+    print "connecting to $name with $func"
+    zsocket -v -l $name 
+    fdl=$REPLY 
+    while :; do 
+            print "accepting connection"
+            zsocket -v -a $fdl
+            accept=$REPLY 
+            eval "$func $accept"
+            close_socket $accept
+    done 
+
+}
+function close_socket {
+    fd=$1
+    exec {fd}>&-
+}
+function msg {
+    local -i fd 
+    local name 
+    local msg 
+    name=$1
+    msg=$2 
+    zsocket $name 
+    fd=$REPLY 
+        print -u$fd -r line 
+    read $fd 
+    close_socket $fd  
+
+
+}
+
+function wait_on_file {
+    name=$1 
+    until [[ -a $name ]]; do 
+            sleep 1
+    done 
+}
+function bla {
+    fd=$1
+    read -u$fd -r line 
+    print $line
+}
+ 
+
+function test_server {
+  listen "/tmp/listenere" "bla" &
+   wait_on_file "/tmp/listenere"
+   msg "/tmp/listenere" "hello world"
+}

@@ -1,0 +1,138 @@
+zmodload "zsh/net/socket"
+
+# communication pattern:
+# c - out filename ->  s \  a d h k  
+# c <- in filename -   s / h n s a e 
+# c -   msg        -> s.out
+# c <-  omsg       -  s.in
+
+function connect {
+
+}
+
+function send_msg {
+        socket=$1 
+        msg=$2
+        print -u$socket $msg  
+
+}
+
+function read_msg {
+        socket=$1
+        read -u$socket msg 
+}
+
+function start_client_queue {
+        tmpnam 
+        qname=$filename 
+        zsocket -l  
+        
+}
+
+function start_client {
+        servname=$1 
+        sockname $servname 
+
+        zsocket $filename 
+        insocket=$REPLY 
+
+        # Get incoming server file 
+        read_command $insocket 
+        print $words
+
+        if [[ $words[1] != "con" ]]; then 
+                print "con command expected, got ${words[1]}"
+                exit -1 
+        fi 
+
+        zsocket $words[2] 
+        outsocket=$REPLY 
+        while :; do 
+                read msg 
+                if [[ $msg == ":exit" ]]; then 
+                        send_command $outsocket "exit" ""  
+                        exit 
+                else 
+                        send_command $outsocket "msg" $msg 
+                fi 
+        done 
+}
+function send_command {
+        sock=$1
+        cmd=$2
+        msg=$3
+        send_msg $1 "$2:$3"
+
+}
+function read_command {
+        read_msg $1
+        split_command $msg 
+}
+function split_command {
+        ins=$1 
+        words=(${(s|:|)ins})
+}
+function close_socket {
+        fd=$1
+        name=$2
+        exec {fd}>&-
+        rm $name 
+}
+function handle_client {
+        outsocket=$1 
+        inname=$2 
+        zsocket -v -l $inname 
+        lsocket=$REPLY 
+        send_command $outsocket "con" $inname:
+        zsocket -v -a $lsocket 
+        insocket=$REPLY 
+        
+        while :; do 
+                read_command $insocket 
+                case $words[1] in 
+                        "exit") 
+                                close_socket $insocket $inname 
+                                exit 0
+                                ;;
+                        "msg")
+                                print $words[2,-1]
+                                ;;
+                        *) 
+                                print "Unrecognized command ${word[1]}"
+                                exit 0
+                                ;;
+                esac
+        done 
+}
+
+function tmpnam {
+        filename=`mktemp tmp.XXXXXXXXX`
+        rm $filename 
+}
+
+function start_server {
+
+        servname=$1 
+        sockname $servname 
+
+        zsocket -v -l $filename 
+        outsocket=$REPLY 
+        print "Ready for connections"
+        while :; do 
+                zsocket -v -a $outsocket 
+                client=$REPLY
+
+                # Create incoming socket name 
+                tmpnam
+                inname=$filename 
+
+                # Fork 
+                handle_client $client $inname & 
+        done
+        
+
+}
+
+function sockname {
+        filename="/tmp/${1}-socket"
+}

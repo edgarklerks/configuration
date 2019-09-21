@@ -1,0 +1,28 @@
+function cache_dirs(){ 
+  autoload -U periodicity
+  alias dn="dirs -vpl"
+
+  cache_dirs(){
+    dirs -vpl > ~/.cache/visited_dirs_cache
+  }
+
+ restore_dirs(){
+   if [[ -r ~/.cache/visited_dirs_cache ]]; then 
+     cat ~/.cache/visited_dirs_cache | sort -n -r -k1,1 |  awk '{print $2}' | while read dir; do
+        pushd $dir 
+      done 
+   fi 
+
+ }
+zle -N da
+da(){
+  dirs -vpl | fzf-tmux | awk '{print $2}' |  read DIR; 
+  pushd $DIR
+  printf "Switched to $DIR\n"
+  zle-finish-line
+
+
+}
+bindkey "^N" da
+}
+

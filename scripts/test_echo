@@ -1,0 +1,4 @@
+#!/usr/bin/zsh
+
+read -u3 line
+print -u4 $line 

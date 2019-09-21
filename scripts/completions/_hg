@@ -1,0 +1,140 @@
+#compdef hg
+
+function _load_branches() {
+    typeset -a branches 
+    IFS=$'\n'; branches=($(hg branches))
+    for i in $branches; do 
+            typeset -a parts 
+            parts=(${(ps: :)i})
+            compadd "$@" $parts[1]
+    done
+}
+
+function _load_added() {
+    typeset -a added 
+    root=$(hg root)
+    IFS=$'\n'; added=($(hg status))
+
+    for i in $added; do 
+            parts=(${(ps: :)i})
+            if [[ $parts[1] == "A" ]] {
+                    compadd -J "added" -x "added files to the repository" -X "added files" "$@" "$root/$parts[2]"
+            }
+            if [[ $parts[1] == "M" ]] {
+                    compadd -J "modified" -x "modified files in the repository" -X "modified files in the repository" "$@" "$root/$parts[2]"
+            }
+    done
+}
+
+function _parse_help() {
+    typeset -a subcommands 
+    typeset -a lines 
+    typeset -a helps
+    help=$(hg help | tr -s ' ')
+    lines=(${(f)help})
+    state='start'
+    for line in $lines; do 
+            parts=(${(ps: :)line})
+            if [[ $parts[1] == 'list' && $parts[2] == 'of' && $state == 'start' ]] {
+                    state='commands'
+            } elif [[ $parts[1] == 'enabled' ]] {
+                state='stop'
+
+            } elif [[ $state == 'commands' ]] {
+                    cmds=$parts[2,-1]
+                    subcommands=("$parts[1]:$cmds" $subcommands)
+            } else {
+                
+            }
+
+           
+    done
+    hasflow=$(hg help | grep 'hgflow')
+    if [[ $hasflow != '' ]]; then 
+            subcommands=($subcommands "flow:a helper for creating branches")
+    fi 
+    _describe -t commands 'hg' subcommands
+    
+}
+
+function _load_missing() {
+    typeset -a missing 
+    root=$(hg root) 
+    IFS=$'\n'; missing=($(hg status))
+
+    for i in $missing; do 
+            parts=(${(ps: :)i})
+            if [[ $parts[1] == "?" ]] {
+                compadd "$@" "$root/$parts[2]"
+            }
+    done
+}
+function _hg_flow {
+        flows=("feature" "hotfix" "release")
+        actions=("start" "finish")
+        if [[ ${flows[(r)${words[2]}]} == '' ]]; then 
+                for flow in $flows; do 
+                        compadd "$@" $flow 
+                done 
+        elif [[ ${actions[(r)${words[3]}]} == '' ]]; then 
+                for action in $actions; do 
+                        compadd "$@" $action 
+                done 
+        elif [[ $words[3] == "finish" ]]; then 
+                _load_branches
+        fi 
+        
+}
+
+function _hg() {
+
+    local curcontext="$curcontext" state 
+    typeset -A opt_args 
+
+    _arguments -C \
+            ':command:->command' \
+            '*::options:->options'
+    case $state in
+            command)
+
+                    _call_function ret _parse_help
+                ;;
+            options)
+                        case $words[1] in 
+                                update)
+                                        _call_function ret _load_branches
+                                ;;
+                                add)
+                                        _call_function ret _load_missing
+                                ;;
+                                revert)
+                                        _call_function ret _load_added
+                                ;;
+                                log)
+                                        _arguments -s \
+                                        '-G[Graphical view]' \
+                                        '--user[View only username]' \
+                                        '--stat[View insertions and deletions]'
+                                ;;
+                                merge)
+                                        _call_function ret _load_branches
+                                ;;
+                                flow)
+                                        _call_function ret _hg_flow 
+                                ;;
+                                diff)
+                                _arguments -s \
+                                        '-r[Revision]' \
+                                        '-c[Change made by revision]'
+                                        _arguments "2:files:_files"
+                                ;;
+                                remove)
+                                        _files
+                                ;;
+                                *)
+                                ;;
+                        esac
+        esac
+}
+
+_hg "$@"

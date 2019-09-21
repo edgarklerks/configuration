@@ -1,0 +1,73 @@
+#!/usr/bin/zsh
+autoload -U colors
+autoload -Uz hooks
+autoload -Uz tmux-extras
+autoload -Uz tools 
+tools 
+tmux-extras
+colors
+
+typeset -gA COLOR_CONFIG_MESSAGES
+typeset -gA ACTION_CONFIG_MESSAGES
+typeset -gA FILL_CONFIG_MESSAGES
+
+COLOR_CONFIG_MESSAGES[ERROR]="red"
+COLOR_CONFIG_MESSAGES[WARNING]="yellow"
+COLOR_CONFIG_MESSAGES[INFO]="cyan"
+COLOR_CONFIG_MESSAGES[OK]="green"
+
+ACTION_CONFIG_MESSAGES[ERROR]="exit"
+ACTION_CONFIG_MESSAGES[ERROR]="exit"
+
+FILL_CONFIG_MESSAGES[ERROR]="[-] Error:"
+FILL_CONFIG_MESSAGES[OK]="[+] Ok:"
+FILL_CONFIG_MESSAGES[WARNING]="[?] Warning:"
+FILL_CONFIG_MESSAGES[INFO]="[!] Info:"
+
+function messages {
+    hooks "config_hook_messages"
+}
+
+function message {
+    local rcolor
+    local lcolor
+    local clr
+    local spec
+    local level="$1"
+    shift
+    local msg="$*"
+    spec="${level:u}"
+    clr=${COLOR_CONFIG_MESSAGES[$spec]}
+
+    lcolor="${fg_bold[$clr]}"
+    rcolor="${reset_color}${fg[$clr]}"
+    rstcolor="${reset_color}"
+    icon=${FILL_CONFIG_MESSAGES[$spec]}
+    printf "%b%s%b\t %30b%b\n" $lcolor $icon $rcolor $msg $rstcolor 1>&2
+    is_tmux && (
+	silently tmux set-option display-time 2000
+	silently tmux set-option message-attr bold
+	silently tmux set-option message-bg "$clr"
+	silently tmux set-option message-fg black
+	tmux_msg "$(printf "%s" $msg)"
+    )
+
+
+    if [[ ${ACTION_CONFIG_MESSAGES[$spec]} = "exit" ]]; then
+	exit 1;
+    fi
+
+}
+
+function failure {
+    message "Error" "$@"
+}
+function ok {
+    message "Ok" "$@"
+}
+function warning {
+    message "Warning" "$@"
+}
+function info {
+    message "Info" "$@"
+}

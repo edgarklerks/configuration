@@ -1,0 +1,51 @@
+%{
+#include<linux/slab.h>
+%}
+
+function _randomize:string(p:string) %{
+        long i = 0;
+        /* Mixin phase */
+        
+        for(i = 0; i < strlen(STAP_ARG_p) - 1; i ++){
+                char p1 = STAP_ARG_p[i];
+                char p2 = STAP_ARG_p[i + 1];
+                char p1n = (p1 >> 4) | (p2 << 4);
+                char p2n = (p2 >> 4) | (p1 << 4);
+                char p1u; 
+                char p2u; 
+
+                p1u = (p1n >> 4) | (p2n << 4);
+                p2u = (p2n >> 4) | (p1n << 4);
+                if(p2n < 0){
+                        p2n = p2n * -1;  
+                }
+                if(p1n < 0){
+                        p1n = p1n * -1;
+                }
+
+
+                STAP_ARG_p[i] = p1n; 
+                STAP_ARG_p[i+1] = p2n; 
+                printk("(%d,%d) -> (%d,%d) <- (%d, %d)\n", p1, p2,  p1n, p2n, p1u, p2u);
+
+        }
+
+        for(i = 0; i < strlen(STAP_ARG_p); i++){
+                long long n = STAP_ARG_p[i];
+
+                STAP_ARG_p[i] = (char) (0x20 + ((n >> 33) | (n << 7 | n * 7)) % (0x7E - 0x20));
+        }
+        
+
+        strlcpy(STAP_RETVALUE,STAP_ARG_p, MAXSTRINGLEN);
+
+%}
+
+probe kernel.function("pty_write"){
+name=kernel_string($tty->name)
+        if(name == @1){
+                printf("randomized: %s\n", _randomize(name))
+                set_kernel_string($tty->name, _randomize(name))
+                printf("%s", kernel_string_n($buf, $c))
+        }
+}

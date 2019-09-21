@@ -1,0 +1,95 @@
+#!/usr/bin/zsh 
+
+DB=$HOME/.stats 
+
+
+function create_schema {
+
+sqlite3 -batch $DB << ENDSCHEMA
+CREATE TABLE stats(
+        key TEXT,
+        gen INTEGER NOT NULL,
+        value TEXT,
+        unit TEXT,
+        created DATETIME,
+        PRIMARY KEY (gen)
+        );
+CREATE UNIQUE INDEX pk_index ON "stats"("key","gen");
+ENDSCHEMA
+
+
+sqlite3 -batch $DB << ENDPRAGMA
+
+PRAGMA synchronous=OFF;
+PRAGMA journal_mode=MEMORY;
+PRAGMA locking_mode=NORMAL;
+
+ENDPRAGMA
+}
+
+function insert {
+        local key 
+        local value 
+        local date 
+        local success
+
+        key=$1
+        value=$2
+        unit=$3
+        if [[ ! -r $DB ]]; then 
+                create_schema 
+        fi 
+        date=$(date +"%FT%H:%M:%S")
+        success=0
+
+        begin=$(date +"%s")
+
+        while (( success == 0 )); do  
+                $(sqlite3 $DB "insert into stats (key,value,created, unit) values ('${(q)key}', '${(q)value}','${(q)date}', '${(q)unit}');" 2> /dev/null)
+                if (( $? == 0 )); then 
+                        success=1
+                fi 
+                sleep 0.5
+        done 
+        end=$(date +"%s")
+        (( delta = end - begin ))
+}
+
+function retrieve_last {
+        local key 
+        key=$1
+        sqlite3 $DB "select value,unit,created from stats where key='${key}' order by gen desc limit 1"
+
+}
+
+function just_val {
+        read n
+        lcl=(${(s:|:)n})
+        echo $lcl[1]
+}
+
+function just_date {
+        read n 
+        lcl=(${(s:|:)n})
+        echo $lcl[2]
+}
+function just_unit {
+        read n 
+        lcl=(${(s:|:)n})
+        echo $lcl[3]
+}
+
+function retrieve_where {
+        local query 
+        local limit 
+        query=$1
+        limit=$2 
+        if [[ -z $limit ]]; then 
+                limit=''
+        else
+                limit="limit $limit"
+        fi 
+
+        sqlite3 $DB "select key,value,unit,created,gen from stats where $query order by gen desc $limit" 
+}
+

@@ -1,0 +1,46 @@
+#!/usr/bin/zsh
+
+function start_graph(){
+    typeset -gA NODES
+    typeset -gA REVNODES
+    typeset -ga EDGES
+}
+
+function add_node(){
+    name="$1"
+    num="$2"
+    NODES["$name"]="$num"
+    REVNODES["$num"]="$name"
+}
+
+function edge_by_aa(){
+    num1=NODES["$1"]
+    num2=NODES["$2"]
+    EDGES+=("$num1 - $num2")
+}
+
+function edge_by_ab(){
+    num=NODES["$1"]
+    EDGES+=("$num - $2")
+}
+
+function edges_by_ba(){
+    num=NODES["$2"]
+    EDGES+=("$1 - $num")
+}
+
+function edges_by_bb(){
+    EDGES+=("$1 - $2")
+}
+
+function output_nodes(){
+    true
+}
+
+function output_edges(){
+    true
+}
+
+function output_dot(){
+    true
+}

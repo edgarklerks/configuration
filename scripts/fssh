@@ -1,0 +1,4 @@
+#!/bin/zsh
+echo "$0"
+p=$(dirname "$0")/fssh.env
+ssh "$@"  -t "$(cat $p)"

@@ -1,0 +1,20 @@
+function buffermanip() {
+  copybuffer(){
+    echo "$BUFFER" | xclip -i
+  }
+  pasteclip(){
+    BUFFER="$(echo $BUFFER | sed "s|%%|$(xclip -o)|g")"
+  }
+  pastefile(){
+    local FILE
+    fd --type file | fzf-tmux | read FILE
+    BUFFER="$(echo $BUFFER | sed "s|%%|$FILE|g")"
+  }
+
+  zle -N pastefile
+  bindkey "^E" pastefile
+  zle -N copybuffer 
+  bindkey "^K" copybuffer
+  zle -N pasteclip 
+  bindkey "^O" pasteclip
+}
