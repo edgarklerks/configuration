@@ -1,3 +1,0 @@
-# When away from the computer, remove all indentities
-ssh-add -D 
-alock -b shade:color=lightgreen,shade=60,blur=80 -c none -i frame -a pam 
