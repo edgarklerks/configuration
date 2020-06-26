@@ -1,7 +1,5 @@
 #!/usr/bin/expect -f
 
-set PASSWD [exec aws ssm get-parameter --name /personal/edgarklerks/ad-passwd --with-decryption | jq -r ".\[\]|.Value" ] 
-
 
 set TOKEN [lindex $argv 0] 
 
@@ -14,7 +12,7 @@ spawn sudo openconnect https://vpn-nl.sanoma.com/OTP
 expect { 
   "\[sudo\]" {
       stty -echo
-      send_user -- "Password: "
+      send_user -- "Sudo Password: "
       expect_user -re "(.*)\n"
       send_user "\n"
       stty echo
@@ -28,9 +26,17 @@ expect {
 expect "Username" {
   send "media\\E.Klerks\r"
 }
+
 expect "Password" { 
-  send "$PASSWD\r"
+  stty -echo 
+  send_user -- "AD Password: "
+  expect_user -re "(.*)\n"
+  send_user "\n"
+  stty echo 
+  set pass $expect_out(1,string)
+  send "$pass\r"
 }
+
 expect { 
   "POST" {} 
 }
