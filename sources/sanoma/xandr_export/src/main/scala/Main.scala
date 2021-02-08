@@ -22,15 +22,13 @@ object Main {
      )
     )
 
-    val datasetRaw = spark.sql(s"SELECT user_id_64, segments FROM nl_appnexus.auctionsegment_feed WHERE segments LIKE '%23302277%' AND day >= '$date'")
+    val datasetRaw = spark.sql(s"SELECT user_id_64 FROM nl_appnexus.auctionsegment_feed WHERE segments LIKE '%23302277%' AND day = '$date' group by user_id_64")
       val datasetAgg = datasetRaw
-      .withColumn("parsed_segments",explode(from_json($"segments",segmentSchema)))
-          .select($"user_id_64",concat_ws("#",$"parsed_segments.segment_id",lit("0")).as("parsed_segments"))
-          .groupBy($"user_id_64")
-          .agg(concat_ws(";",collect_list($"parsed_segments")))
-          .select(concat_ws(":",$"user_id_64",$"parsed_segments"))
+          .select($"user_id_64",lit("22835726#0").as("segments"))
+          .select(concat_ws(":",$"user_id_64",$"segments").as("csv"))
+          .repartition(10)
 
-    datasetAgg.write.mode(SaveMode.Overwrite).csv("s3://sanoma-smbene-bigdata-user/e.klerks/xandr-test")
+    datasetAgg.write.mode(SaveMode.Overwrite).csv("s3://sanoma-smbene-bigdata-user/e.klerks/xandr-export")
   }
 
 }
